@@ -1,4 +1,4 @@
-// Global Product model to store product details globally
+
 class GlobalProduct {
   static String productName = '';
   static String expireDate = '';

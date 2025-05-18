@@ -1,12 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; 
-import 'package:intl/intl.dart'; // For currency formatting
+import 'package:intl/intl.dart'; 
 import 'global_product.dart';
-import 'scanner_screen.dart';  // Import the global product model
-
+import 'scanner_screen.dart';  
 class ListScreen extends StatefulWidget {
-  final List<Product> productList;  // Accept productList from HomeScreen
+  final List<Product> productList; 
 
   ListScreen({required this.productList});
   @override
@@ -18,10 +17,9 @@ class _ListScreenState extends State<ListScreen> {
   String totalAmount = 'Rp 0,00';
   int uncheckedItems = 0;
   int checkedItems = 0;
-  String expirationDate = ''; // Default to empty initially
-  String addedOn = DateTime.now().toString().split(' ')[0]; // Default to today's date
+  String expirationDate = ''; 
+  String addedOn = DateTime.now().toString().split(' ')[0];
 
-  // Function to add a new product
   void addProduct(String name, String expirationDate, String price, File? image, String currency, String addedOn) {
     setState(() {
       widget.productList.add(Product(
@@ -37,26 +35,33 @@ class _ListScreenState extends State<ListScreen> {
     _calculateTotal();
   }
 
-  // Function to calculate the total price of checked items
-  void _calculateTotal() {
-    double total = 0;
-    uncheckedItems = 0;
-    checkedItems = 0;
-    for (var product in widget.productList) {
-      double price = double.tryParse(product.price.replaceAll('Rp ', '').replaceAll(',', '').replaceAll('.', '')) ?? 0;
-      if (product.checked) {
-        total += price;
-        checkedItems++;
-      } else {
-        uncheckedItems++;
-      }
+void _calculateTotal() {
+  double totalChecked = 0;
+  double totalUnchecked = 0;
+  double totalAll = 0;
+
+  for (var product in widget.productList) {
+    double price = double.tryParse(product.price.replaceAll('Rp ', '').replaceAll(',', '').replaceAll('.', '')) ?? 0;
+  
+    if (product.checked) {
+      totalChecked += price;
+    } else {
+      totalUnchecked += price;
     }
-    setState(() {
-      totalAmount = 'Rp ${total.toStringAsFixed(2).replaceAll('.', ',')}';
-    });
+
+    totalAll += price;
   }
 
-  // Function to toggle the checkbox
+  setState(() {
+    totalAmount = 'Rp ${totalAll.toStringAsFixed(2).replaceAll('.', ',')}';
+  });
+
+  setState(() {
+    uncheckedItems = totalUnchecked.toInt();
+    checkedItems = totalChecked.toInt();
+  });
+}
+
   void toggleCheck(int index) {
     setState(() {
       widget.productList[index].checked = !widget.productList[index].checked;
@@ -64,7 +69,6 @@ class _ListScreenState extends State<ListScreen> {
     _calculateTotal();
   }
 
-  // Function to add a new product via the dialog
   void addNewList() {
     showDialog(
       context: context,
@@ -74,7 +78,7 @@ class _ListScreenState extends State<ListScreen> {
         File? image;
         String currency = GlobalProduct.currency;
         String expirationDate = GlobalProduct.expireDate;
-        String addedOn = DateTime.now().toString().split(' ')[0]; // Default today's date
+        String addedOn = DateTime.now().toString().split(' ')[0]; 
 
         return StatefulBuilder(builder: (context, setStateDialog) {
           return AlertDialog(
@@ -221,7 +225,6 @@ class _ListScreenState extends State<ListScreen> {
     );
   }
 
-  // Function to filter the product list based on search
   List<Product> getFilteredList() {
     String query = _searchController.text.toLowerCase();
     return widget.productList.where((product) {
@@ -229,7 +232,6 @@ class _ListScreenState extends State<ListScreen> {
     }).toList();
   }
 
-  // Function to format price based on selected currency
   String formatPrice(String price, String currency) {
     double priceValue = double.tryParse(price.replaceAll('Rp ', '').replaceAll(',', '').replaceAll('.', '')) ?? 0;
     var formatter = NumberFormat.simpleCurrency(locale: 'id_ID', name: currency);
@@ -239,7 +241,6 @@ class _ListScreenState extends State<ListScreen> {
     return formatter.format(priceValue);
   }
 
-  // Function to edit an existing product
   void editProduct(int index) {
     String name = widget.productList[index].name;
     String expirationDate = widget.productList[index].expirationDate;
@@ -402,7 +403,7 @@ class _ListScreenState extends State<ListScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => ScannerScreen(
-          onProductAdded: addProduct,  // Pass the method to add products to the list
+          onProductAdded: addProduct,  
         ),
       ),
     );
@@ -506,26 +507,25 @@ class _ListScreenState extends State<ListScreen> {
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.start,
-                 // Align everything to the left
                     children: [
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.start, // Align text to the left in each column
+                        crossAxisAlignment: CrossAxisAlignment.start, 
                         children: [
                           Text('Unchecked        ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                           Text('Rp 0,00', style: TextStyle(fontSize: 14, color: Colors.black)),
                         ],
                       ),
-                      SizedBox(width: 20), // Add some space between the columns if necessary
+                      SizedBox(width: 20), 
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.start, // Align text to the left in each column
+                        crossAxisAlignment: CrossAxisAlignment.start, 
                         children: [
                           Text('Checked           ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                           Text('$totalAmount', style: TextStyle(fontSize: 14, color: Colors.black)),
                         ],
                       ),
-                      SizedBox(width: 20), // Add some space between the columns if necessary
+                      SizedBox(width: 20),
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.start, // Align text to the left in each column
+                        crossAxisAlignment: CrossAxisAlignment.start, 
                         children: [
                           Text('Total             ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                           Text('$totalAmount', style: TextStyle(fontSize: 14, color: Colors.black)),

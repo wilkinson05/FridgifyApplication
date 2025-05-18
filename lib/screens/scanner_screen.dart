@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:barcode_scan2/barcode_scan2.dart';  // Barcode scan package
-import 'package:http/http.dart' as http;            // HTTP package for API calls
-import 'dart:convert';                             // For parsing the JSON response
-import 'package:intl/intl.dart'; // For currency formatting
-import 'global_product.dart';  // Import the global product model
+import 'package:barcode_scan2/barcode_scan2.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
+import 'global_product.dart';
 
 class ScannerScreen extends StatefulWidget {
   final Function(String, String, String, File?, String, String) onProductAdded;
@@ -23,7 +23,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
   String price = '';
   String currency = 'Rp';
 
-  // Function to fetch product information from the API
   Future<void> fetchProductInfo(String barcode) async {
     final url = Uri.parse('https://world.openfoodfacts.org/api/v0/product/$barcode.json');
     
@@ -45,7 +44,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
               ? data['product']['price'].toString()
               : 'Unknown Price';
 
-          // Update the global product class with the scanned data
           GlobalProduct.productName = productName;
           GlobalProduct.expireDate = expireDate;
           GlobalProduct.purchaseDate = purchaseDate;
@@ -65,7 +63,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
     }
   }
 
-  // Function to scan the barcode
   Future<void> scanBarcode() async {
     try {
       final result = await BarcodeScanner.scan(); 
@@ -83,7 +80,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
     }
   }
 
-  // Navigate to Manual Input Screen
   void navigateToManualInput() {
     Navigator.push(
       context,
@@ -113,7 +109,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
     GlobalProduct.currency = currency;
   }
 
-  // Format the price based on currency
   String formatPrice(String price) {
     double priceValue = double.tryParse(price) ?? 0.0;
     var formatter = NumberFormat.simpleCurrency(locale: 'id_ID', name: currency);
@@ -158,7 +153,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: navigateToManualInput,  // Navigate to manual input screen
+              onPressed: navigateToManualInput, 
               child: Text(
                 'Enter Manually',
                 style: TextStyle(color: Colors.green),
