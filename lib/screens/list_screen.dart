@@ -15,8 +15,8 @@ class ListScreen extends StatefulWidget {
 class _ListScreenState extends State<ListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String totalAmount = 'Rp 0,00';
-  int uncheckedItems = 0;
-  int checkedItems = 0;
+  String uncheckedItems = 'Rp 0,00';
+  String checkedItems = 'Rp 0,00';
   String expirationDate = ''; 
   String addedOn = DateTime.now().toString().split(' ')[0];
 
@@ -42,7 +42,7 @@ void _calculateTotal() {
 
   for (var product in widget.productList) {
     double price = double.tryParse(product.price.replaceAll('Rp ', '').replaceAll(',', '').replaceAll('.', '')) ?? 0;
-  
+    
     if (product.checked) {
       totalChecked += price;
     } else {
@@ -54,13 +54,11 @@ void _calculateTotal() {
 
   setState(() {
     totalAmount = 'Rp ${totalAll.toStringAsFixed(2).replaceAll('.', ',')}';
-  });
-
-  setState(() {
-    uncheckedItems = totalUnchecked.toInt();
-    checkedItems = totalChecked.toInt();
+    checkedItems = 'Rp ${totalChecked.toStringAsFixed(2).replaceAll('.', ',')}';
+    uncheckedItems = 'Rp ${totalUnchecked.toStringAsFixed(2).replaceAll('.', ',')}';
   });
 }
+
 
   void toggleCheck(int index) {
     setState(() {
@@ -512,7 +510,7 @@ void _calculateTotal() {
                         crossAxisAlignment: CrossAxisAlignment.start, 
                         children: [
                           Text('Unchecked        ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                          Text('Rp 0,00', style: TextStyle(fontSize: 14, color: Colors.black)),
+                          Text('$uncheckedItems', style: TextStyle(fontSize: 14, color: Colors.black)),
                         ],
                       ),
                       SizedBox(width: 20), 
@@ -520,7 +518,7 @@ void _calculateTotal() {
                         crossAxisAlignment: CrossAxisAlignment.start, 
                         children: [
                           Text('Checked           ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                          Text('$totalAmount', style: TextStyle(fontSize: 14, color: Colors.black)),
+                          Text('$checkedItems', style: TextStyle(fontSize: 14, color: Colors.black)),
                         ],
                       ),
                       SizedBox(width: 20),
