@@ -19,8 +19,9 @@ class _ListScreenState extends State<ListScreen> {
   String checkedItems = 'Rp 0,00';
   String expirationDate = ''; 
   String addedOn = DateTime.now().toString().split(' ')[0];
+  File image = File('');
 
-  void addProduct(String name, String expirationDate, String price, File? image, String currency, String addedOn) {
+  void addProduct(String name, String expirationDate, String price, File? image, String currency, String addedOn ,) {
     setState(() {
       widget.productList.add(Product(
         name: name,
@@ -454,38 +455,57 @@ void _calculateTotal() {
                   var product = getFilteredList()[index];
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 8),
-                    child: ListTile(
-                      leading: product.image != null
-                          ? Image.file(product.image!, width: 50, height: 50, fit: BoxFit.cover)
-                          : Icon(Icons.image, size: 50),
-                      title: Text(product.name,style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Price: ${formatPrice(product.price, product.currency)}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
-                          Text('Exp: ${product.expirationDate}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
-                          Text('Added on: ${product.addedOn}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
-                        ],
+              child: Dismissible(
+                key: Key(product.name + product.addedOn),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Icon(Icons.delete, color: Colors.white),
+                ),
+                onDismissed: (direction) {
+                  setState(() {
+                    widget.productList.removeAt(index);
+                  });
+                  _calculateTotal();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${product.name} deleted')),
+                  );
+                },
+                child: ListTile(
+                  leading: product.image != null
+                      ? Image.file(product.image!, width: 50, height: 50, fit: BoxFit.cover)
+                      : Icon(Icons.image, size: 50),
+                  title: Text(product.name,style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Price: ${formatPrice(product.price, product.currency)}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
+                      Text('Exp: ${product.expirationDate}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
+                      Text('Added on: ${product.addedOn}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.more_vert),
+                        onPressed: () {
+                          editProduct(index);
+                        },
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.more_vert),
-                            onPressed: () {
-                              editProduct(index);
-                            },
-                          ),
-                          Checkbox(
-                            value: product.checked,
-                            onChanged: (value) {
-                              toggleCheck(index);
-                            },
-                            activeColor: Colors.green,
-                          ),
-                        ],
+                      Checkbox(
+                        value: product.checked,
+                        onChanged: (value) {
+                          toggleCheck(index);
+                        },
+                        activeColor: Colors.green,
                       ),
-                    ),
+                    ],
+                  ),
+                ),
+              ),
                   );
                 },
               ),
@@ -569,6 +589,6 @@ class Product {
     required this.currency,
     required this.checked,
     required this.addedOn,
-    this.image,
+    required this.image,
   });
 }

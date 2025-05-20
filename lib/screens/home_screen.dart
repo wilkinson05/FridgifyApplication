@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   void updateBudget(double newRemainingBudget, double newUsedBudget) {
+    if (!mounted) return;
     setState(() {
       remainingBudget = newRemainingBudget;
       usedBudget = newUsedBudget;
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String currency,
     String addedOn,
   ) {
+    if (!mounted) return;
     setState(() {
       _productList.add(
         Product(
@@ -75,7 +77,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
+  @override
+  void dispose() {
+    // Add any cleanup code here if needed in the future
+    super.dispose();
+  }
+
   void _onItemTapped(int index) {
+    if (!mounted) return;
     setState(() {
       _currentIndex = index;
     });
@@ -83,9 +92,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      HomePage(
+        remainingBudget: remainingBudget,
+        usedBudget: usedBudget,
+        updateBudget: updateBudget,
+      ),
+      InventoryScreen(),
+      ScannerScreen(onProductAdded: addProduct),
+      ListScreen(productList: _productList),
+      UserScreen(),
+    ];
+
     return Scaffold(
       //appBar: AppBar(title: Text('Dashboard')),
-      body: _pages[_currentIndex],
+      body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
