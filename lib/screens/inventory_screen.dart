@@ -1,13 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:fridgify/screens/home_screen.dart';
+import 'package:fridgify/screens/scanner_screen.dart';
 import 'package:image_picker/image_picker.dart';
-import 'global_product.dart';
-import 'scanner_screen.dart';
-
-final List<Map<String, dynamic>> _inventory = [];
+import 'package:intl/intl.dart';
 
 class InventoryScreen extends StatefulWidget {
-  const InventoryScreen({super.key});
+  final List<Product> inventoryList;
+  final Function(String, String, String, File?, String, String) onProductAdded;
+
+  const InventoryScreen({
+    super.key,
+    required this.inventoryList,
+    required this.onProductAdded,
+  });
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -16,11 +22,13 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  List<Map<String, dynamic>> get _filteredInventory {
+  List<Product> get _filteredInventory {
     String query = _searchController.text.toLowerCase();
-    if (query.isEmpty) return _inventory;
-    return _inventory
-        .where((item) => item['name'].toString().toLowerCase().contains(query))
+    if (query.isEmpty) {
+      return widget.inventoryList.where((product) => product.isInInventory).toList();
+    }
+    return widget.inventoryList
+        .where((product) => product.isInInventory && product.name.toLowerCase().contains(query))
         .toList();
   }
 
@@ -30,27 +38,26 @@ class _InventoryScreenState extends State<InventoryScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder:
-          (context) => Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Add Manually'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showAddManualDialog();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.qr_code_scanner),
-                title: const Text('Add from Scanner'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _navigateToScanner();
-                },
-              ),
-            ],
+      builder: (context) => Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Add Manually'),
+            onTap: () {
+              Navigator.pop(context);
+              _showAddManualDialog();
+            },
           ),
+          ListTile(
+            leading: const Icon(Icons.qr_code_scanner),
+            title: const Text('Add from Scanner'),
+            onTap: () {
+              Navigator.pop(context);
+              _navigateToScanner();
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -58,39 +65,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ScannerScreen(onProductAdded: _addProduct),
+        builder: (context) => ScannerScreen(onProductAdded: widget.onProductAdded),
       ),
     );
   }
 
-  void _addProduct(
-    String name,
-    String expirationDate,
-    String price,
-    File? image,
-    String currency,
-    String addedOn,
-  ) {
-    setState(() {
-      _inventory.add({
-        'name': name,
-        'expirationDate': expirationDate,
-        'price': price,
-        'image': image,
-        'currency': currency,
-        'checked': false,
-        'addedOn': addedOn,
-      });
-    });
-  }
-
   void _showAddManualDialog() {
-    String name = GlobalProduct.productName;
-    String expirationDate = GlobalProduct.expireDate;
-    String price = GlobalProduct.price;
+    String name = '';
+    String expirationDate = DateTime.now().toString().split(' ')[0];
+    String price = '';
     File? image;
-    String currency = GlobalProduct.currency;
-    String addedOn = DateTime.now().toString().split(' ')[0];
+    String currency = 'Rp';
 
     final nameController = TextEditingController(text: name);
     final priceController = TextEditingController(text: price);
@@ -189,40 +174,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           value: currency,
                           items:
                               ['Rp', 'USD'].map((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
                           onChanged: (String? newValue) {
                             setStateDialog(() {
                               currency = newValue!;
                             });
                           },
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        const Text("Added On: "),
-                        TextButton(
-                          onPressed: () async {
-                            DateTime? picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setStateDialog(() {
-                                addedOn = picked.toString().split(' ')[0];
-                              });
-                            }
-                          },
-                          child: Text(
-                            addedOn,
-                            style: const TextStyle(color: Colors.green),
-                          ),
                         ),
                       ],
                     ),
@@ -242,7 +203,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     if (name.isNotEmpty &&
                         expirationDate.isNotEmpty &&
                         price.isNotEmpty) {
-                      _addProduct(
+                      final String addedOn = DateTime.now()
+                          .toString()
+                          .split(' ')[0];
+                      widget.onProductAdded(
                         name,
                         expirationDate,
                         price,
@@ -301,62 +265,60 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child:
-                  _filteredInventory.isEmpty
-                      ? const Center(child: Text('No inventory items found.'))
-                      : ListView.builder(
-                        itemCount: _filteredInventory.length,
-                        itemBuilder: (context, index) {
-                          var item = _filteredInventory[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: ListTile(
-                              leading:
-                                  item['image'] != null
-                                      ? Image.file(
-                                        item['image'],
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : const Icon(Icons.image, size: 50),
-                              title: Text(
-                                item['name'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Price: ${item['currency']}${item['price']}',
-                                    style: const TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Exp: ${item['expirationDate']}',
-                                    style: const TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Added on: ${item['addedOn']}',
-                                    style: const TextStyle(
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+              child: _filteredInventory.isEmpty
+                  ? const Center(child: Text('No inventory items found.'))
+                  : ListView.builder(
+                      itemCount: _filteredInventory.length,
+                      itemBuilder: (context, index) {
+                        var item = _filteredInventory[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: ListTile(
+                            leading: item.image != null
+                                ? Image.file(
+                                    item.image!,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Icon(Icons.image, size: 50),
+                            title: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
                               ),
                             ),
-                          );
-                        },
-                      ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Price: ${item.currency}${item.price}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Exp: ${item.expirationDate}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Added on: ${item.addedOn}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -373,3 +335,4 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 }
+
