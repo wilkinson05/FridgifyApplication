@@ -1,12 +1,12 @@
-import 'dart:io';
+import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'inventory_screen.dart';
-import 'list_screen.dart';
-import 'user_screen.dart';
-import 'scanner_screen.dart';
-import 'budget_screen.dart';
+import 'package:fridgify/screens/budget_screen.dart';
+import 'package:fridgify/screens/inventory_screen.dart';
+import 'package:fridgify/screens/list_screen.dart';
+import 'package:fridgify/screens/scanner_screen.dart';
+import 'package:fridgify/screens/user_screen.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,7 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   double remainingBudget = 1000000.00;
   double usedBudget = 200000.00;
   int _currentIndex = 0;
-
+  final List<Product> _products = [];
+  
   void updateBudget(double newRemainingBudget, double newUsedBudget) {
     if (!mounted) return;
     setState(() {
@@ -33,9 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return formatter.format(value).replaceAll(",00", "");
   }
 
-  final List<Product> _productList = [];
-
-  void addProduct(
+  void _addProductToInventory(
     String name,
     String expirationDate,
     String price,
@@ -45,42 +44,29 @@ class _HomeScreenState extends State<HomeScreen> {
   ) {
     if (!mounted) return;
     setState(() {
-      _productList.add(
-        Product(
-          name: name,
-          expirationDate: expirationDate,
-          price: price,
-          image: image,
-          currency: currency,
-          checked: false,
-          addedOn: addedOn,
-        ),
+      // Check if product already exists
+      Product? existingProduct = _products.firstWhereOrNull(
+        (product) => product.name == name && product.addedOn == addedOn,
       );
+      if (existingProduct != null) {
+        // Update existing product
+        existingProduct.isInInventory = true;
+      } else {
+        // Add new product
+        _products.add(
+          Product(
+            name: name,
+            expirationDate: expirationDate,
+            price: price,
+            image: image,
+            currency: currency,
+            checked: false,
+            isInInventory: true,
+            addedOn: addedOn,
+          ),
+        );
+      }
     });
-  }
-
-  final List<Widget> _pages = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _pages.addAll([
-      HomePage(
-        remainingBudget: remainingBudget,
-        usedBudget: usedBudget,
-        updateBudget: updateBudget,
-      ),
-      InventoryScreen(),
-      ScannerScreen(onProductAdded: addProduct),
-      ListScreen(productList: _productList),
-      UserScreen(),
-    ]);
-  }
-
-  @override
-  void dispose() {
-    // Add any cleanup code here if needed in the future
-    super.dispose();
   }
 
   void _onItemTapped(int index) {
@@ -98,31 +84,41 @@ class _HomeScreenState extends State<HomeScreen> {
         usedBudget: usedBudget,
         updateBudget: updateBudget,
       ),
-      InventoryScreen(),
-      ScannerScreen(onProductAdded: addProduct),
-      ListScreen(productList: _productList),
+      InventoryScreen(
+        inventoryList: _products,
+        onProductAdded: _addProductToInventory,
+      ),
+      ScannerScreen(onProductAdded: _addProductToInventory),
+      ListScreen(
+        productList: _products,
+        addProductToInventory: _addProductToInventory,
+      ),
       UserScreen(),
     ];
 
     return Scaffold(
-      //appBar: AppBar(title: Text('Dashboard')),
       body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_box),
-            label: 'Inventory',
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home), 
+            label: 'Home'
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add, size: 40, color: Colors.green),
-            label: '',
-            backgroundColor: Colors.green,
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.inventory), 
+            label: 'Inventory'
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'List'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'User',
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.add, size: 40, color: Colors.green), 
+            label: ''
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.list), 
+            label: 'List'
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.account_circle), 
+            label: 'User'
           ),
         ],
         type: BottomNavigationBarType.fixed,
@@ -160,7 +156,7 @@ class HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Hello, Olivia',
             style: TextStyle(
               fontSize: 24,
@@ -169,40 +165,38 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text(
+          const Text(
             'Remaining Budget',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder:
-                      (context) => BudgetScreen(
-                        remainingBudget: remainingBudget,
-                        usedBudget: usedBudget,
-                        onBudgetChanged: updateBudget,
-                      ),
+                  builder: (context) => BudgetScreen(
+                    remainingBudget: remainingBudget,
+                    usedBudget: usedBudget,
+                    onBudgetChanged: updateBudget,
+                  ),
                 ),
               );
             },
             child: Container(
               width: double.infinity,
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
                 color: Colors.green,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 formatCurrency(remainingBudget),
-                style: TextStyle(color: Colors.white, fontSize: 24),
+                style: const TextStyle(color: Colors.white, fontSize: 24),
                 textAlign: TextAlign.center,
               ),
             ),
           ),
-
           const SizedBox(height: 20),
           Container(
             height: 50,
@@ -224,4 +218,35 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+}
+
+extension ListExtensions<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (var element in this) {
+      if (test(element)) return element;
+    }
+    return null;
+  }
+}
+
+class Product {
+  String name;
+  String expirationDate;
+  String price;
+  File? image;
+  String currency;
+  bool checked;
+  bool isInInventory;
+  String addedOn;
+
+  Product({
+    required this.name,
+    required this.expirationDate,
+    required this.price,
+    required this.currency,
+    required this.checked,
+    required this.isInInventory,
+    required this.addedOn,
+    required this.image,
+  });
 }
