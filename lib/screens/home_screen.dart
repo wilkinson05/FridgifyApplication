@@ -6,6 +6,8 @@ import 'package:fridgify/screens/inventory_screen.dart';
 import 'package:fridgify/screens/list_screen.dart';
 import 'package:fridgify/screens/scanner_screen.dart';
 import 'package:fridgify/screens/user_screen.dart';
+import 'package:fridgify/data/inventory_manager.dart';
+import 'package:fridgify/data/budget_manager.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 
 class HomeScreen extends StatefulWidget {
@@ -34,25 +36,58 @@ class _HomeScreenState extends State<HomeScreen> {
     return formatter.format(value).replaceAll(",00", "");
   }
 
+  // void _addProductToInventory(
+  //   String name,
+  //   String expirationDate,
+  //   String price,
+  //   File? image,
+  //   String currency,
+  //   String addedOn,
+  // ) {
+  //   if (!mounted) return;
+  //   setState(() {
+  //     // Check if product already exists
+  //     Product? existingProduct = _products.firstWhereOrNull(
+  //       (product) => product.name == name && product.addedOn == addedOn,
+  //     );
+  //     if (existingProduct != null) {
+  //       // Update existing product
+  //       existingProduct.isInInventory = true;
+  //     } else {
+  //       // Add new product
+  //       _products.add(
+  //         Product(
+  //           name: name,
+  //           expirationDate: expirationDate,
+  //           price: price,
+  //           image: image,
+  //           currency: currency,
+  //           checked: false,
+  //           isInInventory: true,
+  //           addedOn: addedOn,
+  //         ),
+  //       );
+  //     }
+  //   });
+  // }
+
   void _addProductToInventory(
-    String name,
-    String expirationDate,
-    String price,
-    File? image,
-    String currency,
-    String addedOn,
-  ) {
+  String name,
+  String expirationDate,
+  String price,
+  File? image,
+  String currency,
+  String addedOn,
+  ) async {
     if (!mounted) return;
+
     setState(() {
-      // Check if product already exists
       Product? existingProduct = _products.firstWhereOrNull(
         (product) => product.name == name && product.addedOn == addedOn,
       );
       if (existingProduct != null) {
-        // Update existing product
         existingProduct.isInInventory = true;
       } else {
-        // Add new product
         _products.add(
           Product(
             name: name,
@@ -67,6 +102,33 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     });
+
+    // Tambahan penyimpanan ke JSON
+    final item = InventoryItem(
+      name: name,
+      expirationDate: expirationDate,
+      price: price,
+      imagePath: image?.path,
+      currency: currency,
+      addedOn: addedOn,
+    );
+    await InventoryManager.addItem(item);
+
+    final allItems = await InventoryManager.loadInventory();
+    double total = 0;
+    for (var i in allItems) {
+      total += double.tryParse(i.price) ?? 0;
+    }
+
+    final summary = BudgetSummary(
+      totalSpent: total,
+      numItems: allItems.length,
+      avgItemPrice: allItems.isEmpty ? 0 : total / allItems.length,
+      month: DateTime.now().month.toString(),
+      currency: currency,
+    );
+
+    await BudgetManager.saveSummary(summary);
   }
 
   void _onItemTapped(int index) {
