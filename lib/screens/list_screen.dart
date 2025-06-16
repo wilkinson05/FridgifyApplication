@@ -1,13 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; 
-import 'package:intl/intl.dart'; 
-import 'global_product.dart';
-import 'scanner_screen.dart';  
-class ListScreen extends StatefulWidget {
-  final List<Product> productList; 
+import 'package:fridgify/screens/home_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
-  ListScreen({required this.productList});
+class ListScreen extends StatefulWidget {
+  final List<Product> productList;
+  final Function(String, String, String, File?, String, String) addProductToInventory;
+
+  const ListScreen({
+    super.key,
+    required this.productList,
+    required this.addProductToInventory,
+  });
+
   @override
   _ListScreenState createState() => _ListScreenState();
 }
@@ -17,49 +23,36 @@ class _ListScreenState extends State<ListScreen> {
   String totalAmount = 'Rp 0,00';
   String uncheckedItems = 'Rp 0,00';
   String checkedItems = 'Rp 0,00';
-  String expirationDate = ''; 
-  String addedOn = DateTime.now().toString().split(' ')[0];
-  File image = File('');
 
-  void addProduct(String name, String expirationDate, String price, File? image, String currency, String addedOn ,) {
-    setState(() {
-      widget.productList.add(Product(
-        name: name,
-        expirationDate: expirationDate,
-        price: price,
-        image: image,
-        currency: currency,
-        checked: false,
-        addedOn: addedOn,
-      ));
-    });
+  @override
+  void initState() {
+    super.initState();
     _calculateTotal();
   }
 
-void _calculateTotal() {
-  double totalChecked = 0;
-  double totalUnchecked = 0;
-  double totalAll = 0;
+  void _calculateTotal() {
+    double totalChecked = 0;
+    double totalUnchecked = 0;
+    double totalAll = 0;
 
-  for (var product in widget.productList) {
-    double price = double.tryParse(product.price.replaceAll('Rp ', '').replaceAll(',', '').replaceAll('.', '')) ?? 0;
-    
-    if (product.checked) {
-      totalChecked += price;
-    } else {
-      totalUnchecked += price;
+    for (var product in widget.productList) {
+      double price = double.tryParse(product.price.replaceAll('Rp ', '').replaceAll(',', '').replaceAll('.', '')) ?? 0;
+      
+      if (product.checked) {
+        totalChecked += price;
+      } else {
+        totalUnchecked += price;
+      }
+
+      totalAll += price;
     }
 
-    totalAll += price;
+    setState(() {
+      totalAmount = 'Rp ${totalAll.toStringAsFixed(2).replaceAll('.', ',')}';
+      checkedItems = 'Rp ${totalChecked.toStringAsFixed(2).replaceAll('.', ',')}';
+      uncheckedItems = 'Rp ${totalUnchecked.toStringAsFixed(2).replaceAll('.', ',')}';
+    });
   }
-
-  setState(() {
-    totalAmount = 'Rp ${totalAll.toStringAsFixed(2).replaceAll('.', ',')}';
-    checkedItems = 'Rp ${totalChecked.toStringAsFixed(2).replaceAll('.', ',')}';
-    uncheckedItems = 'Rp ${totalUnchecked.toStringAsFixed(2).replaceAll('.', ',')}';
-  });
-}
-
 
   void toggleCheck(int index) {
     setState(() {
@@ -72,12 +65,11 @@ void _calculateTotal() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        String name = GlobalProduct.productName;
-        String price = GlobalProduct.price;
+        String name = '';
+        String expirationDate = DateTime.now().toString().split(' ')[0];
+        String price = '';
         File? image;
-        String currency = GlobalProduct.currency;
-        String expirationDate = GlobalProduct.expireDate;
-        String addedOn = DateTime.now().toString().split(' ')[0]; 
+        String currency = 'Rp';
 
         return StatefulBuilder(builder: (context, setStateDialog) {
           return AlertDialog(
@@ -170,32 +162,11 @@ void _calculateTotal() {
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
-                          setState(() {
+                          setStateDialog(() {
                             currency = newValue!;
                           });
                         },
                       )
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Text("Added On: "),
-                      TextButton(
-                        onPressed: () async {
-                          DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                          );
-                          if (picked != null) {
-                            setStateDialog(() {
-                              addedOn = picked.toString().split(' ')[0];
-                            });
-                          }
-                        },
-                        child: Text(addedOn,style: TextStyle(color: Colors.green),),
-                      ),
                     ],
                   ),
                 ],
@@ -206,16 +177,29 @@ void _calculateTotal() {
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                child: Text('Cancel',style: TextStyle(color: Colors.green),),
+                child: Text('Cancel', style: TextStyle(color: Colors.green),),
               ),
               TextButton(
                 onPressed: () {
                   if (name.isNotEmpty && expirationDate.isNotEmpty && price.isNotEmpty) {
-                    addProduct(name, expirationDate, price, image, currency, addedOn);
+                    final String addedOn = DateTime.now()
+                        .toString()
+                        .split(' ')[0];
+                    widget.productList.add(Product(
+                      name: name,
+                      expirationDate: expirationDate,
+                      price: price,
+                      image: image,
+                      currency: currency,
+                      checked: false,
+                      isInInventory: false,
+                      addedOn: addedOn,
+                    ));
+                    _calculateTotal();
                     Navigator.pop(context);
                   }
                 },
-                child: Text('Save',style: TextStyle(color: Colors.green),),
+                child: Text('Save', style: TextStyle(color: Colors.green),),
               ),
             ],
           );
@@ -241,12 +225,13 @@ void _calculateTotal() {
   }
 
   void editProduct(int index) {
-    String name = widget.productList[index].name;
-    String expirationDate = widget.productList[index].expirationDate;
-    String price = widget.productList[index].price;
-    File? image = widget.productList[index].image;
-    String currency = widget.productList[index].currency;
-    String addedOn = widget.productList[index].addedOn;
+    Product product = widget.productList[index];
+    String name = product.name;
+    String expirationDate = product.expirationDate;
+    String price = product.price;
+    File? image = product.image;
+    String currency = product.currency;
+    String addedOn = product.addedOn;
 
     showDialog(
       context: context,
@@ -281,7 +266,7 @@ void _calculateTotal() {
                             });
                           }
                         },
-                        child: Text(expirationDate.isEmpty ? 'Select Date' : expirationDate,style: TextStyle(color: Colors.green),),
+                        child: Text(expirationDate.isEmpty ? 'Select Date' : expirationDate, style: TextStyle(color: Colors.green),),
                       ),
                     ],
                   ),
@@ -333,7 +318,7 @@ void _calculateTotal() {
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
-                          setState(() {
+                          setStateDialog(() {
                             currency = newValue!;
                           });
                         },
@@ -357,7 +342,7 @@ void _calculateTotal() {
                             });
                           }
                         },
-                        child: Text(addedOn,style: TextStyle(color: Colors.green),),
+                        child: Text(addedOn, style: TextStyle(color: Colors.green),),
                       ),
                     ],
                   ),
@@ -368,7 +353,7 @@ void _calculateTotal() {
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: Text('Cancel',style: TextStyle(color: Colors.green),),
+                  child: Text('Cancel', style: TextStyle(color: Colors.green),),
                 ),
                 TextButton(
                   onPressed: () {
@@ -381,13 +366,15 @@ void _calculateTotal() {
                           image: image,
                           currency: currency,
                           checked: widget.productList[index].checked,
+                          isInInventory: widget.productList[index].isInInventory,
                           addedOn: addedOn,
                         );
                       });
+                      _calculateTotal();
                       Navigator.pop(context);
                     }
                   },
-                  child: Text('Save',style: TextStyle(color: Colors.green),),
+                  child: Text('Save', style: TextStyle(color: Colors.green),),
                 ),
               ],
             );
@@ -397,17 +384,16 @@ void _calculateTotal() {
     );
   }
 
-  void navigateToScanner() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ScannerScreen(
-          onProductAdded: addProduct,  
-        ),
+  void _showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -455,57 +441,78 @@ void _calculateTotal() {
                   var product = getFilteredList()[index];
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 8),
-              child: Dismissible(
-                key: Key(product.name + product.addedOn),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Icon(Icons.delete, color: Colors.white),
-                ),
-                onDismissed: (direction) {
-                  setState(() {
-                    widget.productList.removeAt(index);
-                  });
-                  _calculateTotal();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${product.name} deleted')),
-                  );
-                },
-                child: ListTile(
-                  leading: product.image != null
-                      ? Image.file(product.image!, width: 50, height: 50, fit: BoxFit.cover)
-                      : Icon(Icons.image, size: 50),
-                  title: Text(product.name,style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Price: ${formatPrice(product.price, product.currency)}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
-                      Text('Exp: ${product.expirationDate}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
-                      Text('Added on: ${product.addedOn}',style: TextStyle(color: Colors.green,fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.more_vert),
-                        onPressed: () {
-                          editProduct(index);
-                        },
+                    child: Dismissible(
+                      key: Key(product.name + product.addedOn),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Icon(Icons.delete, color: Colors.white),
                       ),
-                      Checkbox(
-                        value: product.checked,
-                        onChanged: (value) {
-                          toggleCheck(index);
-                        },
-                        activeColor: Colors.green,
+                      onDismissed: (direction) {
+                        setState(() {
+                          widget.productList.removeAt(index);
+                        });
+                        _calculateTotal();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('${product.name} deleted')),
+                        );
+                      },
+                      child: ListTile(
+                        leading: product.image != null
+                            ? Image.file(product.image!, width: 50, height: 50, fit: BoxFit.cover)
+                            : Icon(Icons.image, size: 50),
+                        title: Text(product.name, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Price: ${formatPrice(product.price, product.currency)}', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                            Text('Exp: ${product.expirationDate}', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                            Text('Added on: ${product.addedOn}', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.more_vert),
+                              onPressed: () {
+                                editProduct(index);
+                              },
+                            ),
+                            Checkbox(
+                              value: product.checked,
+                              onChanged: (value) {
+                                toggleCheck(index);
+                              },
+                              activeColor: Colors.green,
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.inventory),
+                              onPressed: () {
+                                if (product.checked) {
+                                  widget.addProductToInventory(
+                                    product.name,
+                                    product.expirationDate,
+                                    product.price,
+                                    product.image,
+                                    product.currency,
+                                    product.addedOn,
+                                  );
+                                  setState(() {
+                                    product.isInInventory = true;
+                                  });
+                                  _showSuccessMessage('${product.name} has been added to inventory');
+                                } else {
+                                  _showSuccessMessage('Please check the item before adding to inventory');
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
                   );
                 },
               ),
@@ -551,7 +558,6 @@ void _calculateTotal() {
                       ),
                     ],
                   ),
-
                 ),
               ],
             ),
@@ -573,22 +579,3 @@ void _calculateTotal() {
   }
 }
 
-class Product {
-  String name;
-  String expirationDate;
-  String price;
-  File? image;
-  String currency;
-  bool checked;
-  String addedOn;
-
-  Product({
-    required this.name,
-    required this.expirationDate,
-    required this.price,
-    required this.currency,
-    required this.checked,
-    required this.addedOn,
-    required this.image,
-  });
-}
