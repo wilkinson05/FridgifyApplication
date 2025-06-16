@@ -64,6 +64,9 @@ void _calculateTotal() {
   void toggleCheck(int index) {
     setState(() {
       widget.productList[index].checked = !widget.productList[index].checked;
+      if (widget.productList[index].checked) {
+        ive.add(widget.productList[index]);
+      }
     });
     _calculateTotal();
   }
